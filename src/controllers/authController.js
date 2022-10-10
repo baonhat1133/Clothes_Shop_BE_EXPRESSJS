@@ -1,4 +1,4 @@
-import databaseMethod from "../models/mySQL";
+import databaseMethod from "../models/userModels";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
@@ -31,7 +31,7 @@ let generateAccessToken = (user) => {
       role: user.role_id,
     },
     process.env.ACCESS_SECRET_KEY,
-    { expiresIn: "90s" }
+    { expiresIn: "20s" }
   );
   return accessToken;
 };
@@ -47,7 +47,7 @@ let generateRefreshToken = (user) => {
   );
   return refreshToken;
 };
-let loginUser = async (req, res) => {
+let checkLogin = async (req, res) => {
   try {
     let { email, password } = req.body;
     let user = await databaseMethod.getUserByEmail(email);
@@ -70,14 +70,14 @@ let loginUser = async (req, res) => {
         sameSite: "strict",
       });
       let { password, ...other } = user[0];
-      res.status(200).json({ other, accessToken });
+      return res.status(200).json({ other, accessToken });
     }
   } catch (err) {
     res.status(500).json(err);
   }
 };
 let requestRefreshToken = (req, res) => {
-  let refreshToken = req.headers.cookied;
+  let refreshToken = req.cookies.refreshToken; //gửi cái refreshtoken vào để nó verify
   // req.cookies.refreshtoken;
   if (!refreshTokens.includes(refreshToken)) {
     res.status(403).json("Refresh token not valid");
@@ -100,20 +100,29 @@ let requestRefreshToken = (req, res) => {
       // path: "/auth/refresh",
       sameSite: "strict",
     });
-    res.status(200).json({ accessToken_new: newAccessToken });
+    res.status(200).json({ accessToken: newAccessToken });
   });
 };
+let loginAdmin = (req, res) => {
+  return res
+    .status(200)
+    .json({ message: "Welcome Admin !!!", checkAdmin: true });
+};
+
 let logoutUser = async (req, res) => {
   res.clearCookie("refreshToken");
   // refreshTokens = refreshTokens.filter(
   //   (token) => token !== req.cookies.refreshToken
   // );
+  //lọc đi user cái token lưu trên mySQL đã logout
   res.status(200).json("Logout success !!!");
 };
+
 const authController = {
   registerUser: registerUser,
-  loginUser: loginUser,
+  checkLogin: checkLogin,
   requestRefreshToken: requestRefreshToken,
   logoutUser: logoutUser,
+  loginAdmin: loginAdmin,
 };
 export default authController;

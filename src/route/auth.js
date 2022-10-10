@@ -5,7 +5,13 @@ const router = express.Router();
 
 let initAuthRoutes = (app) => {
   router.post("/register", authController.registerUser);
-  router.post("/login", authController.loginUser);
+  router.post("/checkLogin", authController.checkLogin);
+  // router.post("/loginRole",middlewareController.verifyToken)
+  router.post(
+    "/loginAdmin",
+    middlewareController.verifyTokenAdmin,
+    authController.loginAdmin
+  );
   router.post("/refresh", authController.requestRefreshToken);
   router.post(
     "/logout",
