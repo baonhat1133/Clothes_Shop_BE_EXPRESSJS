@@ -1,4 +1,4 @@
-import pool from "./connectDB";
+import pool from "../configs/connectDB";
 
 let getUserByEmail = async (email) => {
   let [user, ...other] = await pool.execute(

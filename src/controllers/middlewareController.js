@@ -9,12 +9,9 @@ let verifyToken = (req, res, next) => {
       if (err) {
         return res.status(403).json("Token is not valid !!!");
       }
-      if (user.role === 2) {
-        req.user = user;
-        next();
-      } else {
-        return res.status(401).json("You are Admin, please login exact !!!");
-      }
+      req.user = user;
+      next();
+      return res.status(200).json("Login success !!!");
     });
   } else {
     return res.status(401).json("Not authenticated !!!");
@@ -23,7 +20,7 @@ let verifyToken = (req, res, next) => {
 
 let verifyTokenAdmin = (req, res, next) => {
   let token = req.headers.token;
-  const accessToken = token.split(" ")[1];
+  const accessToken = token?.split(" ")[1];
   if (token) {
     jwt.verify(accessToken, process.env.ACCESS_SECRET_KEY, (err, user) => {
       if (err) {
