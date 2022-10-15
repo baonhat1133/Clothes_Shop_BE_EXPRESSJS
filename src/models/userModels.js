@@ -7,7 +7,10 @@ let getUserByEmail = async (email) => {
   );
   return user || [];
 };
-
+let getAllUser = async () => {
+  let [allUser, ...other] = await pool.execute("SELECT * FROM user");
+  return allUser;
+};
 let createUser = async (fullname, email, phone_number, password, role_id) => {
   await pool.execute(
     "insert into user (fullname, email, phone_number, password, role_id) values (?,?,?,?,?)",
@@ -18,5 +21,6 @@ let createUser = async (fullname, email, phone_number, password, role_id) => {
 const databaseMethod = {
   getUserByEmail,
   createUser,
+  getAllUser,
 };
 export default databaseMethod;

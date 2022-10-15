@@ -8,18 +8,36 @@ let initHandleProduct = (app) => {
   router.get("/getAllPrds/:id", productController.getProductByIdCtrl);
   router.post(
     "/createPrd",
-    // middlewareController.verifyTokenAdmin,
+    middlewareController.verifyTokenAdmin,
     productController.createProductCtrl
   );
   router.put(
     "/updateProduct/:id",
-    // middlewareController.verifyTokenAdmin,
+    middlewareController.verifyTokenAdmin,
     productController.updateProductCtrl
   );
   router.delete(
     "/deleteProduct/:id",
-    // middlewareController.verifyTokenAdmin,
+    middlewareController.verifyTokenAdmin,
     productController.deleteProductCtrl
+  );
+
+  /* ORDER==================================== */
+  router.get("/getAllOrder/:user_id", productController.getAllOrderCtrl);
+  router.post(
+    "/createOrder",
+    middlewareController.verifyToken,
+    productController.createOrderCtrl
+  );
+  router.put(
+    "/updateOrderAdmin/:user_id",
+    middlewareController.verifyTokenAdmin,
+    productController.updateOrderCtrl
+  );
+  router.put(
+    "/updateOrder/:user_id",
+    middlewareController.verifyToken,
+    productController.updateOrderCtrl
   );
   return app.use("/product", router);
 };
