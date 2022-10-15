@@ -2,8 +2,8 @@ import databaseMethod from "../models/userModels";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
+import tokenMethod from "../models/tokenModel";
 dotenv.config();
-let refreshTokens = [];
 let registerUser = async (req, res) => {
   console.log("registerUser", req.body);
   try {
@@ -31,7 +31,7 @@ let generateAccessToken = (user) => {
       role: user.role_id,
     },
     process.env.ACCESS_SECRET_KEY,
-    { expiresIn: "20s" }
+    { expiresIn: "25d" }
   );
   return accessToken;
 };
@@ -47,6 +47,7 @@ let generateRefreshToken = (user) => {
   );
   return refreshToken;
 };
+
 let checkLogin = async (req, res) => {
   try {
     let { email, password } = req.body;
@@ -61,68 +62,83 @@ let checkLogin = async (req, res) => {
     if (user && validPassword) {
       const accessToken = generateAccessToken(user[0]);
       const refreshToken = generateRefreshToken(user[0]);
-      refreshTokens.push(refreshToken);
-      //lưu token vào cookie
-      res.cookie("refreshToken", refreshToken, {
-        httpOnly: true,
-        secure: false,
-        // path: "/admin",
-        sameSite: "strict",
-      });
+      //lưu token vào cookie/DB
+      await tokenMethod.createToken(user[0].id, refreshToken);
+      // res.cookie("refreshtoken", refreshToken, {
+      //   httpOnly: true,
+      //   // secure: false,
+      //   // path: "/admin",
+      //   // sameSite: "strict",
+      // });
+
       let { password, ...other } = user[0];
-      return res.status(200).json({ other, accessToken });
+      return res.status(200).json({ other, accessToken, refreshToken });
     }
   } catch (err) {
     res.status(500).json(err);
   }
 };
-let requestRefreshToken = (req, res) => {
-  let refreshToken = req.cookies.refreshToken; //gửi cái refreshtoken vào để nó verify
+let requestRefreshToken = async (req, res) => {
+  let refresh_userId = req.body; // sent refresh token and userId {user_id, refreshtoken}
+  let refreshTokenDB = await tokenMethod.getAllToken(refresh_userId.user_id); //gửi cái refreshtoken vào để nó verify [{}]
+  console.log("database", refreshTokenDB);
+  console.log("refresh_userId body", refresh_userId);
   // req.cookies.refreshtoken;
-  if (!refreshTokens.includes(refreshToken)) {
-    res.status(403).json("Refresh token not valid");
+  let checkEmty = refreshTokenDB.some((token) => {
+    return token.id === refresh_userId.user_id;
+  });
+  if (!refreshTokenDB[0]) {
+    return res.status(403).json("Refresh token not valid");
   }
-  if (!refreshToken) {
+  if (!refresh_userId) {
     return res.status(401).json("Not authenticated");
   }
-  jwt.verify(refreshToken, process.env.REFRESH_SECRET_KEY, (err, user) => {
-    if (err) {
-      console.log(err);
+  jwt.verify(
+    refresh_userId.refreshToken,
+    process.env.REFRESH_SECRET_KEY,
+    async (err, user) => {
+      if (err) {
+        console.log(err);
+      }
+      // refreshTokens = refreshTokens.filter((rftoken) => rftoken !== refreshToken);
+      await tokenMethod.deleteToken(user.id);
+      const newAccessToken = generateAccessToken(user);
+      const newRefreshToken = generateRefreshToken(user);
+      // refreshTokens.push(newRefreshToken);
+      await tokenMethod.createToken(user.id, newRefreshToken);
+
+      return res
+        .status(200)
+        .json({ accessToken: newAccessToken, refreshToken: newRefreshToken });
     }
-    refreshTokens = refreshTokens.filter((rftoken) => rftoken !== refreshToken);
-    const newAccessToken = generateAccessToken(user);
-    const newRefreshToken = generateRefreshToken(user);
-    refreshTokens.push(newRefreshToken);
-    //lưu token vào cookie
-    res.cookie("refreshToken", newRefreshToken, {
-      httpOnly: true,
-      secure: false,
-      // path: "/auth/refresh",
-      sameSite: "strict",
-    });
-    res.status(200).json({ accessToken: newAccessToken });
-  });
+  );
 };
-let loginAdmin = (req, res) => {
-  return res
-    .status(200)
-    .json({ message: "Welcome Admin !!!", checkAdmin: true });
-};
+// let loginAdmin = (req, res) => {
+//   return res
+//     .status(200)
+//     .json({ message: "Welcome Admin !!!", checkAdmin: true });
+// };
 
 let logoutUser = async (req, res) => {
-  res.clearCookie("refreshToken");
-  // refreshTokens = refreshTokens.filter(
-  //   (token) => token !== req.cookies.refreshToken
-  // );
-  //lọc đi user cái token lưu trên mySQL đã logout
-  res.status(200).json("Logout success !!!");
+  let id = req.params.user_id;
+  await tokenMethod.deleteToken(id);
+  return res.status(200);
 };
 
+let getAllUser = async (req, res) => {
+  try {
+    let allUser = await databaseMethod.getAllUser();
+    res.status(200).json({ message: "Get All User Success", data: allUser });
+  } catch (err) {
+    res.status(500).json(err);
+  }
+};
 const authController = {
   registerUser: registerUser,
   checkLogin: checkLogin,
   requestRefreshToken: requestRefreshToken,
   logoutUser: logoutUser,
-  loginAdmin: loginAdmin,
+  // loginAdmin: loginAdmin,
+  getAllUser: getAllUser,
 };
 export default authController;

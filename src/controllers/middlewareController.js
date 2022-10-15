@@ -20,8 +20,10 @@ let verifyToken = (req, res, next) => {
 
 let verifyTokenAdmin = (req, res, next) => {
   let token = req.headers.token;
-  const accessToken = token?.split(" ")[1];
+
   if (token) {
+    const accessToken = token?.split(" ")[1];
+
     jwt.verify(accessToken, process.env.ACCESS_SECRET_KEY, (err, user) => {
       if (err) {
         return res.status(403).json("Token is not valid for verifyToken!!!");
